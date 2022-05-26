@@ -1,0 +1,78 @@
+DATA:
+  data_name: scannet_cross
+  data_root: ./data
+  classes: 20
+  aug: True
+  voxelSize: 0.02
+
+MASKFORMER:
+  hidden_dim: 128
+  dropout: 0.1
+  nheads: 8
+  dim_feedforward: 1024
+  enc_layers: 6
+  dec_layers: 6
+  num_point_batch: 800
+  mask_dim: 128
+  drop_rate: 0.1
+  attn_drop_rate: 0.1
+  drop_path: 0.1
+  num_tokens_2d: 88
+
+TRAIN:
+  viewNum: 3
+  weight_2d: 0.1
+  arch: semaffinet
+  layers_2d: 34
+  arch_3d: MinkUNet18A
+
+  sync_bn_2d: True
+  sync_bn_3d: True
+  ignore_label: 255
+  train_gpu: [0,1,2,3,4,5,6,7]
+  workers: 16  # data loader workers
+  batch_size: 16  # batch size for training
+  batch_size_val: 16  # batch size for validation during training, memory and speed tradeoff
+  base_lr: 0.02
+  loop: 5
+  epochs: 100
+  empty_cache_epochs: 5
+  start_epoch: 0
+  power: 0.9
+  momentum: 0.9
+  weight_decay: 0.0001
+
+  scheduler: SquaredLRWarmingUp
+  step_size: 20000
+  max_iter: 40000
+  step_gamma: 0.1
+  poly_power: 0.9
+  exp_gamma: 0.95
+  exp_step_size: 445
+
+  manual_seed: 1463
+  print_freq: 10
+  save_freq: 1
+  save_path:
+  weight:  # path to initial weight (default: none)
+  resume:
+  evaluate: True
+  eval_freq: 1
+
+Distributed:
+  dist_url: tcp://127.0.0.1:6787
+  dist_backend: 'nccl'
+  multiprocessing_distributed: True
+  world_size: 1
+  rank: 0
+
+
+TEST:
+  split: val  # split in [train, val and test]
+  val_benchmark: True
+  test_workers: 4
+  test_gpu: [0,1,2,3]
+  test_batch_size: 16
+  model_path:
+  save_folder:
+  test_repeats: 7
