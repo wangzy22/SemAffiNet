@@ -131,6 +131,17 @@ Please rename the checkpoints as `model_best.pth.tar` and organize the directory
                     |-- model_best.pth.tar
 ```
 
+## Citation
+If you find our work useful in your research, please consider citing: 
+```
+@inproceedings{wang2022semaff,
+  title={SemAffiNet: Semantic-Affine Transformation for Point Cloud Segmentation},
+  author={Wang, Ziyi and Rao, Yongming and Yu, Xumin and Zhou, Jie and Lu, Jiwen},
+  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year={2022}
+}
+```
+
 ## Acknowledgements
 
 Our code is inspired by [BPNet](https://github.com/wbhu/BPNet). Some of the data preprocessing codes for ScanNetV2 are inspired by [3DMV](https://github.com/angeladai/3DMV/tree/master/prepare_data).
