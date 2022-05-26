@@ -14,7 +14,7 @@ import torch.utils.data
 import torch.multiprocessing as mp
 import torch.distributed as dist
 from os.path import join
-from metrics import iou, iou_nyu
+from metrics import iou
 
 from MinkowskiEngine import SparseTensor, CoordsManager
 from util import config
@@ -175,15 +175,6 @@ def main_worker(gpu, ngpus_per_node, argss):
                                                  shuffle=False, num_workers=args.test_workers, pin_memory=True,
                                                  drop_last=False, collate_fn=collation_fn_eval_all,
                                                  sampler=val_sampler)
-    elif args.data_name == 'nyuv2':
-        from dataset.nyuv2 import NYUv2Dataset, collation_fn_eval_all
-        val_data = NYUv2Dataset(dataPathPrefix=args.data_root, voxelSize=args.voxelSize, split='val', aug=False,
-                                memCacheInit=True, eval_all=True)
-        val_sampler = torch.utils.data.distributed.DistributedSampler(val_data) if args.distributed else None
-        val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.batch_size_val,
-                                                shuffle=False, num_workers=args.workers, pin_memory=False,
-                                                drop_last=False, collate_fn=collation_fn_eval_all,
-                                                sampler=val_sampler)
     else:
         raise Exception('Dataset not supported yet'.format(args.data_name))
 
@@ -192,8 +183,6 @@ def main_worker(gpu, ngpus_per_node, argss):
         validate(model, val_loader)
     elif args.data_name == 'scannet_cross':
         test_cross_3d(model, val_loader)
-    elif args.data_name == 'nyuv2':
-        test_cross_2d(model, val_loader, args)
 
 
 def validate(model, val_loader):
@@ -278,64 +267,6 @@ def test_cross_3d(model, val_data_loader):
             # allAcc = sum(intersection_meter.sum) / (sum(target_meter.sum) + 1e-10)
             if main_process():
                 print("2D: ", mIoU_2d, ", 3D: ", mIou_3d)
-
-    
-def test_cross_2d(model, val_data_loader, args):
-    torch.backends.cudnn.enabled = False  # for cudnn bug at https://github.com/pytorch/pytorch/issues/4107
-    intersection_meter = AverageMeter()
-    union_meter = AverageMeter()
-    target_meter = AverageMeter()
-    save_folder = os.path.join(args.save_folder, 'results_2D')
-    if not os.path.exists(save_folder):
-        os.makedirs(save_folder)
-
-    with torch.no_grad():
-        model.eval()
-        preds, gts = [], []
-        if main_process():
-            pbar = tqdm(total=len(val_data_loader))
-        for i, (coords, feat, label_3d, color, label_2d, link, inds_reverse) in enumerate(val_data_loader):
-            if main_process():
-                pbar.update(1)
-            sinput = SparseTensor(feat.cuda(non_blocking=True), coords.cuda(non_blocking=True))
-            color, link = color.cuda(non_blocking=True), link.cuda(non_blocking=True)
-            label_3d, label_2d = label_3d.cuda(non_blocking=True), label_2d.cuda(non_blocking=True)
-            predictions_3d, predictions_2d = model(sinput, color, link)
-            output_3d = predictions_3d['pred_masks']
-            output_2d = predictions_2d['pred_masks']
-            output_2d = output_2d.contiguous()
-            output_3d = output_3d[inds_reverse, :]
-            if args.multiprocessing_distributed:
-                dist.all_reduce(output_3d)
-
-            output_2d = output_2d.detach().max(1)[1]
-            # for j, name in enumerate(name_2d):
-            #     save_path = os.path.join(save_folder, name.replace('png', 'npy'))
-            #     np.save(save_path, output_2d[j, :, :, 0].cpu().numpy())
-            intersection, union, target = intersectionAndUnionGPU(output_2d, label_2d.detach(), args.classes,
-                                                                    args.ignore_label)
-            intersection, union, target = intersection.cpu().numpy(), union.cpu().numpy(), target.cpu().numpy()
-            intersection_meter.update(intersection), union_meter.update(union), target_meter.update(target)
-
-            preds.append(output_3d.detach_().cpu().numpy().astype(np.half))
-            gts.append(label_3d.cpu().numpy())
-        if main_process():
-            pbar.close()
-        gt = np.concatenate(gts)
-        pred = np.concatenate(preds)
-        np.save(join(args.save_folder, 'gt.npy'), gt)
-        pred_id = np.argmax(pred, axis=1)
-        mIou_3d = iou_nyu.evaluate(pred_id, gt)
-        np.save(join(args.save_folder, 'pred.npy'), pred_id)
-
-        iou_class = intersection_meter.sum / (union_meter.sum + 1e-10)
-        accuracy_class = intersection_meter.sum / (target_meter.sum + 1e-10)
-        mIoU_2d = np.mean(iou_class)
-        mAcc = np.mean(accuracy_class)
-        allAcc = sum(intersection_meter.sum) / (sum(target_meter.sum) + 1e-10)
-        if main_process():
-            print("2D:", mIoU_2d, ", 3D:", mIou_3d)
-            print("mAcc:", mAcc, ", allAcc", allAcc)
 
 
 if __name__ == '__main__':

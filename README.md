@@ -38,7 +38,6 @@ conda install tensorboardX, imageio, sharedarray, plyfile, tqdm
 ### Data Preparation
 
 - Download the official [ScanNetV2](https://github.com/ScanNet/ScanNet) dataset.
-- Download the official [NYUv2](https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html) dataset.
 
 - Prepare ScanNetV2 2D data:
     Please follow instructions in [3DMV](https://github.com/angeladai/3DMV/tree/master/prepare_data) repo.
@@ -57,11 +56,6 @@ conda install tensorboardX, imageio, sharedarray, plyfile, tqdm
     python dataset/pregroup_2d_scannet.py
     ```
     You can also download our processed group results [here](https://drive.google.com/drive/folders/1qgOuSVjtH_gQZRobQ3p4iwesHDVV9nMu?usp=sharing). 
-
-- Prepare NYUv2 data:
-    ```
-    python dataset/preprocess_2d_nyuv2.py
-    ```
 
 - The data is expected to be in the following file structure:
     ```
@@ -88,16 +82,10 @@ conda install tensorboardX, imageio, sharedarray, plyfile, tqdm
             |-- view_groups_train.pth
             |-- view_groups_val.pth
             |-- view_groups_test.pth
-        |-- NYUv2/
-            |-- depth/
-            |-- image/
-            |-- pc_o3d/
-            |-- label13/
-            |-- train.txt
-            |-- val.txt
     ```
     
-
+### Init model preparation
+Download the pre-trained resnet34d [weights](https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/resnet34d_ra2-f8dcfcaf.pth) and place it in the `initmodel` folder. The pre-trained weight is from the `timm` repository.
 ### Train
 
 - ScanNetV2 **5cm** voxelization setting:
@@ -107,10 +95,6 @@ conda install tensorboardX, imageio, sharedarray, plyfile, tqdm
 - ScanNetV2 **2cm** voxelization setting:
     ```
     bash tool/train.sh SemAffiNet_2cm config/scannet/semaffinet_2cm.yaml scannet 2
-    ```
-- NYUv2 **2cm** voxelization setting:
-    ```
-    bash tool/train.sh SemAffiNet config/nyuv2/semaffinet_2cm.yaml nyuv2 2
     ```
 
 ### Test
@@ -123,23 +107,20 @@ conda install tensorboardX, imageio, sharedarray, plyfile, tqdm
     ```
     bash tool/test.sh SemAffiNet_2cm config/scannet/semaffinet_2cm.yaml scannet 2
     ```
-- NYUv2 **2cm** voxelization setting:
-    ```
-    bash tool/test.sh SemAffiNet config/nyuv2/semaffinet_2cm.yaml nyuv2 2
-    ```
 
 ## Results
 
-We provide pretrained SemAffiNet models:
+We provide pre-trained SemAffiNet models:
 | Dataset | URL | 3D mIoU | 2D mIoU |
 | ------- | --- | ------- | ------- |
 | ScanNetV2 5cm | [Google Drive](https://drive.google.com/file/d/16ghVzxbm05Sn4h8t7Ogr2LKJwqlZRgWI/view?usp=sharing)  | 72.1 | 68.2 |
 | ScanNetV2 2cm | [Google Drive](https://drive.google.com/file/d/1rL_jVnJGRmGDcg4_0MRLug4s6qx0nF5O/view?usp=sharing)  | 74.5 | 74.2 |
-| NYUv2         | [Google Drive](https://drive.google.com/file/d/1H-41FV--XPV2WN3EkylUjY3lqq9PIVIX/view?usp=sharing)  | --   | 58.4 |
 
 Please rename the checkpoints as `model_best.pth.tar` and organize the directory as the following structure:
 ```
     SemAffiNet/
+    |-- initmodel/
+        |-- resnet34d_ra2-f8dcfcaf.pth
     |-- Exp/
         |-- scannet/
             |-- SemAffiNet_2cm/
@@ -148,12 +129,8 @@ Please rename the checkpoints as `model_best.pth.tar` and organize the directory
             |-- SemAffiNet_5cm/
                 |-- model/
                     |-- model_best.pth.tar
-        |-- nyuv2/
-            |-- SemAffiNet/
-                |-- model/
-                    |-- model_best.pth.tar
 ```
 
 ## Acknowledgements
 
-Our code is inspired by [BPNet](https://github.com/wbhu/BPNet). Some of the data preprocessing codes for ScanNetV2 and NYUv2 datasets are inspired by [3DMV](https://github.com/angeladai/3DMV/tree/master/prepare_data) and []() respectively.
+Our code is inspired by [BPNet](https://github.com/wbhu/BPNet). Some of the data preprocessing codes for ScanNetV2 are inspired by [3DMV](https://github.com/angeladai/3DMV/tree/master/prepare_data).

@@ -264,24 +264,6 @@ def main_worker(gpu, ngpus_per_node, argss):
                                                      shuffle=False, num_workers=args.workers, pin_memory=False,
                                                      drop_last=False, collate_fn=collation_fn_eval_all,
                                                      sampler=val_sampler)
-    elif args.data_name == 'nyuv2':
-        from dataset.nyuv2 import NYUv2Dataset, collation_fn, collation_fn_eval_all
-        train_data = NYUv2Dataset(dataPathPrefix=args.data_root, voxelSize=args.voxelSize, split='train', aug=args.aug,
-                                  memCacheInit=True, loop=args.loop)
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_data) if args.distributed else None
-        train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.batch_size,
-                                                    shuffle=(train_sampler is None),
-                                                    num_workers=args.workers, pin_memory=False, sampler=train_sampler,
-                                                    drop_last=True, collate_fn=collation_fn,
-                                                    worker_init_fn=worker_init_fn)
-        if args.evaluate:
-            val_data = NYUv2Dataset(dataPathPrefix=args.data_root, voxelSize=args.voxelSize, split='val', aug=False,
-                                    memCacheInit=True, eval_all=True)
-            val_sampler = torch.utils.data.distributed.DistributedSampler(val_data) if args.distributed else None
-            val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.batch_size_val,
-                                                    shuffle=False, num_workers=args.workers, pin_memory=False,
-                                                    drop_last=False, collate_fn=collation_fn_eval_all,
-                                                    sampler=val_sampler)
     else:
         raise Exception('Dataset not supported yet'.format(args.data_name))
 
@@ -291,7 +273,7 @@ def main_worker(gpu, ngpus_per_node, argss):
             train_sampler.set_epoch(epoch)
             if args.evaluate:
                 val_sampler.set_epoch(epoch)
-        if args.data_name == 'scannet_cross' or args.data_name == 'nyuv2':
+        if args.data_name == 'scannet_cross':
             loss_train, mIoU_train, mAcc_train, allAcc_train, \
             loss_train_2d, mIoU_train_2d, mAcc_train_2d, allAcc_train_2d, current_iter \
                 = train_cross(train_loader, model, shadow_model_2d, shadow_model_3d, criterion, optimizer, epoch, scheduler, args.classes)
@@ -303,7 +285,7 @@ def main_worker(gpu, ngpus_per_node, argss):
             writer.add_scalar('mIoU_train', mIoU_train, epoch_log)
             writer.add_scalar('mAcc_train', mAcc_train, epoch_log)
             writer.add_scalar('allAcc_train', allAcc_train, epoch_log)
-            if args.data_name == 'scannet_cross' or args.data_name == 'nyuv2':
+            if args.data_name == 'scannet_cross':
                 writer.add_scalar('loss_train_2d', loss_train_2d, epoch_log)
                 writer.add_scalar('mIoU_train_2d', mIoU_train_2d, epoch_log)
                 writer.add_scalar('mAcc_train_2d', mAcc_train_2d, epoch_log)
@@ -311,7 +293,7 @@ def main_worker(gpu, ngpus_per_node, argss):
 
         is_best = False
         if args.evaluate and (epoch_log % args.eval_freq == 0):
-            if args.data_name == 'scannet_cross' or args.data_name == 'nyuv2':
+            if args.data_name == 'scannet_cross':
                 loss_val, mIoU_val, mAcc_val, allAcc_val, \
                 loss_val_2d, mIoU_val_2d, mAcc_val_2d, allAcc_val_2d \
                     = validate_cross(val_loader, model, criterion)
@@ -323,7 +305,7 @@ def main_worker(gpu, ngpus_per_node, argss):
                 writer.add_scalar('mIoU_val', mIoU_val, epoch_log)
                 writer.add_scalar('mAcc_val', mAcc_val, epoch_log)
                 writer.add_scalar('allAcc_val', allAcc_val, epoch_log)
-                if args.data_name == 'scannet_cross' or args.data_name == 'nyuv2':
+                if args.data_name == 'scannet_cross':
                     writer.add_scalar('loss_val_2d', loss_val_2d, epoch_log)
                     writer.add_scalar('mIoU_val_2d', mIoU_val_2d, epoch_log)
                     writer.add_scalar('mAcc_val_2d', mAcc_val_2d, epoch_log)
@@ -332,9 +314,6 @@ def main_worker(gpu, ngpus_per_node, argss):
                     # remember best iou and save checkpoint
                     is_best = mIoU_val > best_iou
                     best_iou = max(best_iou, mIoU_val)
-                elif args.data_name == 'nyuv2':
-                    is_best = mIoU_val_2d > best_iou
-                    best_iou = max(best_iou, mIoU_val_2d)
 
         if (epoch_log % args.save_freq == 0) and main_process():
             save_checkpoint(
@@ -523,7 +502,7 @@ def train_cross(train_loader, model, shadow_model_2d, shadow_model_3d, criterion
     for i, batch_data in enumerate(train_loader):
         data_time.update(time.time() - end)
 
-        if args.data_name == 'scannet_cross' or args.data_name == 'nyuv2':
+        if args.data_name == 'scannet_cross':
             (coords, feat, label_3d, color, label_2d, link) = batch_data
             # For some networks, making the network invariant to even, odd coords is important
             coords[:, 1:4] += (torch.rand(3) * 100).type_as(coords)
@@ -666,7 +645,7 @@ def validate_cross(val_loader, model, criterion):
     with torch.no_grad():
         for i, batch_data in enumerate(val_loader):
 
-            if args.data_name == 'scannet_cross' or args.data_name == 'nyuv2':
+            if args.data_name == 'scannet_cross':
                 (coords, feat, label_3d, color, label_2d, link, inds_reverse) = batch_data
                 sinput = SparseTensor(feat.cuda(non_blocking=True), coords.cuda(non_blocking=True))
                 color, link = color.cuda(non_blocking=True), link.cuda(non_blocking=True)
