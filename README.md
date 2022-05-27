@@ -3,6 +3,8 @@ Created by [Ziyi Wang](https://wangzy22.github.io/), [Yongming Rao](https://raoy
 
 This repository is an official implementation of SemAffiNet (CVPR 2022).
 
+[[arxiv]](http://arxiv.org/abs/2205.13490)
+
 ![intro](fig/semaffinet.png)
 
 ## Installation
