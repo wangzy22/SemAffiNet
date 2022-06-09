@@ -68,11 +68,11 @@ conda install tensorboardX, imageio, sharedarray, plyfile, tqdm
                 |-- color/
                     |-- 0.jpg
                 |-- depth/
-                    |-- 0.jpg
+                    |-- 0.png
                 |-- label/
-                    |-- 0.jpg
+                    |-- 0.png
                 |-- pose/
-                    |-- 0.jpg
+                    |-- 0.txt
         |-- 3D/
             |-- train/
                 |-- scene0000_00_vh_clean_2.pth
